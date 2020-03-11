@@ -136,18 +136,18 @@ prompt 'Putting template on READ ONLY mode'
 prompt '----------------------------------'
 
 declare
-openMode varchar2(32);
+pdbMode varchar2(32);
 templateName varchar2(32);
 begin
 
 templateName := '${TEMPLATE}';
-select open_mode into openMode from v\$pdbs where name = templateName;
+select open_mode into pdbMode from v\$pdbs where name = templateName;
 
-if openMode = 'READ WRITE' then
+if pdbMode = 'READ WRITE' then
 EXECUTE IMMEDIATE 'ALTER PLUGGABLE DATABASE ' || templateName  || ' CLOSE IMMEDIATE';
 EXECUTE IMMEDIATE 'ALTER PLUGGABLE DATABASE ' || templateName  || ' OPEN READ ONLY';
-elsif openMode <> 'READ ONLY' then
-raise_application_error(-20001,'Incompatible mode ' || openMode || ' for ' || templateName );
+elsif pdbMode <> 'READ ONLY' then
+raise_application_error(-20001,'Incompatible mode ' || pdbMode || ' for ' || templateName );
 end if;
 end;
 /
@@ -173,9 +173,61 @@ printSeparator
 
 if [ ${EXIT_CODE} != 0 ]; then
   printWarning "Couldn't create PDB"
-  printWarning "Aborting ${PRINT_ACTION} of ${PDBNAME}"
+  printWarning "Aborting creation of ${PDBNAME}"
   ## Send email
-  sendEmail "${PRINT_ACTION} ABORTED of ${SHOP_NAME}" "${SHOP_INFO}"
+  #sendEmail "${PRINT_ACTION} ABORTED of ${SHOP_NAME}" "${SHOP_INFO}"
   continue;
+fi
+}
+
+## -- REMOVE A PDB
+remove_pdb ()
+{
+printInfo "Dropping a PDB : ${PDBNAME} "
+printSeparator
+
+sqlplus -s / as sysdba << EOF 2>&1 >> ${LOG_FILE}
+set serveroutput on;
+set echo on
+set time on
+set timin on
+WHENEVER SQLERROR EXIT 1
+
+prompt '--------------'
+prompt 'Dropping a PDB'
+prompt '--------------'
+
+DECLARE
+  pdbName VARCHAR2(32);
+  pdbMode VARCHAR2(32);
+BEGIN
+select name,open_mode into pdbName,pdbMode from v\$pdbs where name = '${PDBNAME}';
+--
+if pdbMode like ('READ%') then
+  EXECUTE IMMEDIATE 'ALTER PLUGGABLE DATABASE ' || pdbName || ' CLOSE IMMEDIATE';
+  EXECUTE IMMEDIATE 'DROP PLUGGABLE DATABASE ' || pdbName || ' INCLUDING DATAFILES';
+elsif pdbMode = 'MOUNTED' then
+  EXECUTE IMMEDIATE 'DROP PLUGGABLE DATABASE ' || pdbName || ' INCLUDING DATAFILES';
+else 
+  raise_application_error(-20001,'Incompatible mode ' || pdbMode || ' for ' || '${PDBNAME}' );
+end if;
+EXCEPTION
+WHEN NO_DATA_FOUND THEN
+  dbms_output.put_line('Pluggable database does not exists: '||sqlerrm);
+WHEN OTHERS THEN
+  raise_application_error(-20009,'Unknow error. Please contact your administrator: ' || sqlerrm);
+END;
+/
+
+exit 0
+EOF
+EXIT_CODE=${?}
+printSeparator
+
+if [ ${EXIT_CODE} != 0 ]; then
+  printWarning "Couldn't remove a PDB"
+  printWarning "Aborting removal of ${PDBNAME}"
+  ## Send email
+  sendEmail "ABORTED removal of ${PDBNAME}"
 fi
 }
