@@ -1,0 +1,94 @@
+#!/bin/bash
+#
+#  /**********************************/
+# /*      Logging library           */
+#/**********************************/
+#
+## Load the logging library. The logingLibV2.sh needs to be located in the lib folder.
+. $(dirname $0)/lib/logingLibV2.sh
+
+## Mail recipients. These guys will get alert emails (coma separated list )
+#INFO_RECIP_LIST="jose.pavon@bestsecret.com"
+#WARNING_RECIP_LIST="jose.pavon@bestsecret.com"
+#ERROR_RECIP_LIST="jose.pavon@bestsecret.com"
+
+## Directory location of the backup log.
+LOG_FILE_BASE_DIR="/home/oracle/log"
+
+#  /**********************************/
+# /*       SQL FUNCTIONS            */
+#/**********************************/
+#
+## Load the logging library. The logingLibV2.sh needs to be located in the lib folder.
+. $(dirname $0)/lib/pdbsqlib_prem.sh
+#. $(dirname $0)/lib/pdbsqlib_cloud.sh
+#
+#  /**********************************/
+# /* public static void main() :p   */
+#/**********************************/
+#
+# Get year, month and day
+YEAR=`date +%Y`
+MONTH=`date +%m`
+DAY=`date +%d`
+# Remove trailing / for LOG_FILE_BASE_DIR
+LOG_FILE_BASE_DIR=${LOG_FILE_BASE_DIR%/}
+# Build log directory
+mkdir -p ${LOG_FILE_BASE_DIR}/${YEAR}/${MONTH}
+# Create log file and mark start of the script
+LOG_FILE=${LOG_FILE_BASE_DIR}/${YEAR}/${MONTH}/pdbctl_log_`date +"%y.%m.%d_%H%M"`.log
+setLogFile ${LOG_FILE}
+#
+## -- Usage Function to Display
+#
+usage()
+{
+  echo "Usage: $0 [-a CREATE|STOP|STOPALL|STARTALL|REMOVE|STATUS|START] [ -t TEMPLATE_NAME ] [ -p PDBNAME ]"
+  exit 2
+}
+#
+## -- Settings the variables
+#
+set_variable()
+{
+  local varname=$1
+  shift
+  if [ -z "${!varname}" ]; then
+    eval "$varname=\"$@\""
+  else
+    echo "Error: $varname already set"
+    usage
+  fi
+}
+
+#
+## -- Reading Inputs and Validations 
+#
+unset ACTION TEMPLATE PDBNAME
+
+while getopts 'o:t:p:?h' opt
+do
+  case $opt in
+    o) set_variable ACTION $OPTARG ;;
+    t) set_variable TEMPLATE $OPTARG ;;
+    p) set_variable PDBNAME $OPTARG ;;
+    h|?) usage ;; esac
+done
+
+[ -z "$ACTION" ] && usage
+
+if [ -n "$ACTION" ]; then
+  ACTION=`echo $ACTION | tr '[:lower:]' '[:upper:]'`
+  case $ACTION in
+    STATUS) status_pdb ;;
+    CREATE) create_pdb $PDBNAME $TEMPLATE ;;
+    STOP) stop_pdb $PDBNAME ;;
+    STOPALL) stop_all_pdb ;;
+    START) start_pdb $PDBNAME ;;
+    STARTALL) start_all_pdb ;;
+    REMOVE) remove_pdb $PDBNAME ;;
+    ?) usage ;;
+  esac
+fi
+
+## ----------------- END ----------------- ##
