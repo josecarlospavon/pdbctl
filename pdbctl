@@ -1,4 +1,60 @@
 #!/bin/bash
+#================================================================
+# HEADER
+#================================================================
+#% SYNOPSIS
+#%    pdbctl [-h|a] [-p[pdbname]] [-t[template]] 
+#%
+#% DESCRIPTION
+#%    Intended to be used as a management tool to perform
+#%    different operations with pluggable databases inside
+#%    a container database (CDB).
+#%   
+#%    Keep in mind that in versions 12.1,12.2,18c only one PDB is
+#%    allowed without extra-cost Multitenant Option.
+#%
+#%    On 19c onwards, 3 PDBs are allowed without Multitenant Option.
+#%
+#%    Script needs to be executed as oracle OS user within the
+#%    database server. Environment variables such as PATH,
+#%    ORACLE_SID, ORACLE_HOME, LD_LIBRARY_PATH... needs to be
+#%    properly set for this 0.x version.
+#%
+#%
+#%
+#% OPTIONS
+#%    -o [OPTION]  [STATUS]: Will show the status for all PDBs
+#%                 [STOP|STOPALL]: Stop one or all PDBs.
+#%                 [START|STARTALL]: Starts one or all PDBs.
+#%                 [CREATE]: Create a cloned PDB from a given Template
+#%                 [SNAPCLONE]: Same as CREATE but using ACFS snapshot
+#%                 capabilities, created for CI/CD environments.
+#%                 [REMOVE]: Drop a PDB
+#%
+#%    -p,          Specify the PDB to be managed
+#%    -t,          Specify the template PDB or GoldImage to be cloned
+#%    -h,          Print this help
+#%    -v,          Print script information
+#%
+#% EXAMPLES
+#%    pdbctl -o status | pdbctl -h
+#%    pdbctl -o stop -p [PDBNAME]
+#%    pdbctl -o snapclone -[PDBNAME] -t [TEMPLATE]
+#%
+#================================================================
+#- IMPLEMENTATION
+#-    version         pdbctl 0.2
+#-    author          Jose Carlos Pavón
+#-    copyright       Copyright (c)
+#-    license         GNU General Public License
+#-
+#================================================================
+#  HISTORY
+#     2020/03/09 : jcpavon : Script creation
+#     2020/03/12 : jcpavon : Added function snapshot_clone
+#================================================================
+# END_OF_HEADER
+#================================================================
 #
 #  /**********************************/
 # /*      Logging library           */
@@ -43,10 +99,19 @@ setLogFile ${LOG_FILE}
 #
 usage()
 {
-  echo "Usage: $0 [-a CREATE|STOP|STOPALL|STARTALL|REMOVE|STATUS|START] [ -t TEMPLATE_NAME ] [ -p PDBNAME ]"
+  echo "Usage: $0 [-a CREATE|STOP|STOPALL|STARTALL|REMOVE|STATUS|START] [ -t TEMPLATE_NAME ] [ -p
+  PDBNAME ] [-v] [-h]"
   exit 2
 }
 #
+## -- Function to show the tool´s version
+#
+version()
+{
+    echo "pdbctl version: 0.2"
+    echo
+    exit 2
+}
 ## -- Settings the variables
 #
 set_variable()
@@ -66,12 +131,13 @@ set_variable()
 #
 unset ACTION TEMPLATE PDBNAME
 
-while getopts 'o:t:p:?h' opt
+while getopts 'o:t:p:v:?h' opt
 do
   case $opt in
     o) set_variable ACTION $OPTARG ;;
     t) set_variable TEMPLATE $OPTARG ;;
     p) set_variable PDBNAME $OPTARG ;;
+    v) version ;;
     h|?) usage ;; esac
 done
 

@@ -2,7 +2,7 @@
 # /*       SQL FUNCTIONS            */
 #/**********************************/
 #
-## Load the logging library. The logingLibV2.sh needs to be located in the lib folder.
+## Load the sql libraries. The following sripts needs to be located in the lib folder.
 #. $(dirname $0)/lib/pdbsqlib_prem.sh
 #. $(dirname $0)/lib/pdbsqlib_cloud.sh
 # -- STATUS ALL PDBs
@@ -31,6 +31,7 @@ WHEN OTHERS THEN
   dbms_output.put_line('Unexpected error ocurrs: '||sqlerrm);
 END;
 /
+exit 0
 EOF
 printSeparator
 }
@@ -52,6 +53,7 @@ WHEN OTHERS THEN
   dbms_output.put_line('Unexpected error ocurrs: '||sqlerrm);
 END;
 /
+exit 0
 EOF
 printSeparator
 }
@@ -84,6 +86,7 @@ WHEN NO_DATA_FOUND THEN
   --NULL;
 END;
 /
+exit 0
 EOF
 printSeparator
 }
@@ -116,6 +119,7 @@ WHEN NO_DATA_FOUND THEN
   --NULL;
 END;
 /
+exit 0
 EOF
 printSeparator
 }
