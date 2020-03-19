@@ -64,9 +64,9 @@
 . $(dirname $0)/lib/logingLibV2.sh
 
 ## Mail recipients. These guys will get alert emails (coma separated list )
-#INFO_RECIP_LIST="jose.pavon@bestsecret.com"
-#WARNING_RECIP_LIST="jose.pavon@bestsecret.com"
-#ERROR_RECIP_LIST="jose.pavon@bestsecret.com"
+#INFO_RECIP_LIST=""
+#WARNING_RECIP_LIST=""
+#ERROR_RECIP_LIST=""
 
 ## Directory location of the backup log.
 LOG_FILE_BASE_DIR="/home/oracle/log"
