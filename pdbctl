@@ -18,7 +18,7 @@
 #%    Script needs to be executed as oracle OS user within the
 #%    database server. Environment variables such as PATH,
 #%    ORACLE_SID, ORACLE_HOME, LD_LIBRARY_PATH... needs to be
-#%    properly set for this 0.x version.
+#%    properly set for the 0.x version.
 #%
 #%
 #%
@@ -30,6 +30,7 @@
 #%                 [SNAPCLONE]: Same as CREATE but using ACFS snapshot
 #%                 capabilities, created for CI/CD environments.
 #%                 [REMOVE]: Drop a PDB
+#%                 [REFRESH]: Refresh the Gold Image or PDB used as Template
 #%
 #%    -p,          Specify the PDB to be managed
 #%    -t,          Specify the template PDB or GoldImage to be cloned
@@ -43,7 +44,7 @@
 #%
 #================================================================
 #- IMPLEMENTATION
-#-    version         pdbctl 0.2
+#-    version         pdbctl 0.3
 #-    author          Jose Carlos Pavón
 #-    copyright       Copyright (c)
 #-    license         GNU General Public License
@@ -52,6 +53,7 @@
 #  HISTORY
 #     2020/03/09 : jcpavon : Script creation
 #     2020/03/12 : jcpavon : Added function snapshot_clone
+#     2020/03/12 : jcpavon : Added function refresh_pdb
 #================================================================
 # END_OF_HEADER
 #================================================================
@@ -59,35 +61,26 @@
 #  /**********************************/
 # /*      Logging library           */
 #/**********************************/
-#
-## Load the logging library. The logingLibV2.sh needs to be located in the lib folder.
+### Load the logging library. The logingLibV2.sh needs to be located in the lib folder.
 . $(dirname $0)/lib/logingLibV2.sh
-
 ## Mail recipients. These guys will get alert emails (coma separated list )
 #INFO_RECIP_LIST=""
 #WARNING_RECIP_LIST=""
 #ERROR_RECIP_LIST=""
-
-## Directory location of the backup log.
+### Directory location of the backup log.
 LOG_FILE_BASE_DIR="/home/oracle/log"
-
-#  /**********************************/
-# /*       SQL FUNCTIONS            */
-#/**********************************/
-#
-## Load the logging library. The logingLibV2.sh needs to be located in the lib folder.
-. $(dirname $0)/lib/pdbsqlib_prem.sh
-#. $(dirname $0)/lib/pdbsqlib_cloud.sh
 #
 #  /**********************************/
-# /* public static void main() :p   */
+# /*      Config Section            */
 #/**********************************/
-#
-# Get year, month and day
+# 
+### Dump Location
+DUMPDIR=/srv/oradump ## CHANGE ME
+### Get year, month and day
 YEAR=`date +%Y`
 MONTH=`date +%m`
 DAY=`date +%d`
-# Remove trailing / for LOG_FILE_BASE_DIR
+### Remove trailing / for LOG_FILE_BASE_DIR
 LOG_FILE_BASE_DIR=${LOG_FILE_BASE_DIR%/}
 # Build log directory
 mkdir -p ${LOG_FILE_BASE_DIR}/${YEAR}/${MONTH}
@@ -95,12 +88,31 @@ mkdir -p ${LOG_FILE_BASE_DIR}/${YEAR}/${MONTH}
 LOG_FILE=${LOG_FILE_BASE_DIR}/${YEAR}/${MONTH}/pdbctl_log_`date +"%y.%m.%d_%H%M"`.log
 setLogFile ${LOG_FILE}
 #
+#  /**********************************/
+# /*       SQL FUNCTIONS            */
+#/**********************************/
+#
+### Load the logging library. The logingLibV2.sh needs to be located in the lib folder.
+#. $(dirname $0)/lib/pdbsqlib_prem.sh  ### Uncomment to use it on premises
+#. $(dirname $0)/lib/pdbsqlib_cloud.sh ### Uncomment to use it on oracle cloud (TDE enabled)
+#
+#  /**********************************/
+# /* public static void main() :p   */
+#/**********************************/
+#
+### Remove trailing / for LOG_FILE_BASE_DIR
+LOG_FILE_BASE_DIR=${LOG_FILE_BASE_DIR%/}
+### Build log directory
+mkdir -p ${LOG_FILE_BASE_DIR}/${YEAR}/${MONTH}
+### Create log file and mark start of the script
+LOG_FILE=${LOG_FILE_BASE_DIR}/${YEAR}/${MONTH}/pdbctl_log_`date +"%y.%m.%d_%H%M"`.log
+setLogFile ${LOG_FILE}
+#
 ## -- Usage Function to Display
 #
 usage()
 {
-  echo "Usage: $0 [-a CREATE|STOP|STOPALL|STARTALL|REMOVE|STATUS|START] [ -t TEMPLATE_NAME ] [ -p
-  PDBNAME ] [-v] [-h]"
+  echo "Usage: $0 [-a STATUS|CREATE|STOP|STOPALL|START|STARTALL|REMOVE|REFRESH] [ -t TEMPLATE_NAME ] [ -p PDBNAME ] [-v] [-h]"
   exit 2
 }
 #
@@ -112,6 +124,7 @@ version()
     echo
     exit 2
 }
+#
 ## -- Settings the variables
 #
 set_variable()
@@ -125,7 +138,6 @@ set_variable()
     usage
   fi
 }
-
 #
 ## -- Reading Inputs and Validations 
 #
@@ -153,8 +165,11 @@ if [ -n "$ACTION" ]; then
     START) start_pdb $PDBNAME ;;
     STARTALL) start_all_pdb ;;
     REMOVE) remove_pdb $PDBNAME ;;
+    REFRESH) refresh_pdb $TEMPLATE ;;
     ?) usage ;;
   esac
 fi
-
-## ----------------- END ----------------- ##
+#
+## ----------------------------------------------------------- ##
+## --                       E N D                           -- ##
+## ----------------------------------------------------------- ##
