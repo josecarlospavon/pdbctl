@@ -1,0 +1,7 @@
+DIRECTORY=pdb_refresh_dir
+DUMPFILE=hybrisObfuscated_%U.dmp	    ## CHANGE ME
+LOGFILE=impdp_refresh_hybris.log	    ## CHANGE ME
+SCHEMAS=hybris_obfc			    ## CHANGE ME
+REMAP_SCHEMA=hybris_obfc:hybris		    ## CHANGE ME
+REMAP_TABLESPACE=hybris_obfc_dat:hybris_dat ## CHANGE ME
+PARALLEL=8
