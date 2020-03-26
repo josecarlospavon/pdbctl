@@ -4,8 +4,9 @@
 #
 # For Cloud deployments or systems using TDE we have to get the encryption key
 TDEKEY=`~/.gp wallet`
-echo $TDEKEY
+# -----------------------------------
 # -- STATUS ALL PDBs
+# -----------------------------------
 status_pdb ()
 {
 sqlplus -s / as sysdba << EOF 2>&1
@@ -13,7 +14,9 @@ set feedback off verify off echo off;
 show pdbs;
 EOF
 }
+# -----------------------------------
 # -- START ALL PDBs
+# -----------------------------------
 start_all_pdb ()
 {
 printInfo "Starting ALL PDBs "
@@ -34,12 +37,14 @@ END;
 EOF
 printSeparator
 }
+# -----------------------------------
 ## -- STOP ALL PDBs
+# -----------------------------------
 stop_all_pdb ()
 {
 printInfo "Stopping ALL PDBs "
 printSeparator
-
+echo "Stopping ALL PDBs............"
 sqlplus -s / as sysdba << EOF 2>&1 >> ${LOG_FILE}
 set serveroutput on;
 BEGIN
@@ -55,12 +60,14 @@ END;
 EOF
 printSeparator
 }
+# -----------------------------------
 ## -- STOP A PDB
+# -----------------------------------
 stop_pdb ()
 {
 printInfo "Stopping PDB : ${PDBNAME} "
 printSeparator
-
+echo "Stopping pluggable database ${PDBNAME}............"
 sqlplus -s / as sysdba << EOF 2>&1 >> ${LOG_FILE}
 set serveroutput on;
 DECLARE
@@ -87,12 +94,14 @@ END;
 EOF
 printSeparator
 }
+# -----------------------------------
 ## -- START A PDB
+# -----------------------------------
 start_pdb ()
 {
 printInfo "Starting a PDB in MOUNT state : ${PDBNAME} "
 printSeparator
-
+echo "Starting pluggable database ${PDBNAME}............"
 sqlplus -s / as sysdba << EOF 2>&1 >> ${LOG_FILE}
 set serveroutput on;
 DECLARE
@@ -119,12 +128,14 @@ END;
 EOF
 printSeparator
 }
+# -----------------------------------
 ## -- CREATE EMPTY PDB FROM PDB$SEED
+# -----------------------------------
 create_pdb ()
 {
-printInfo "Privisioning PDB : ${PDBNAME} "
+printInfo "Provisioning PDB : ${PDBNAME} "
 printSeparator
-
+echo "Provisioning pluggable database ${PDBNAME}............"
 sqlplus -s / as sysdba << EOF 2>&1 >> ${LOG_FILE}
 set serveroutput on;
 set echo on
@@ -155,12 +166,11 @@ end;
 prompt '-----------------'
 prompt 'Creating new PDB'
 prompt '-----------------'
-CREATE PLUGGABLE DATABASE ${PDBNAME} FROM ${TEMPLATE};
+CREATE PLUGGABLE DATABASE ${PDBNAME} FROM ${TEMPLATE} snapshot copy KEYSTORE IDENTIFIED BY "${TDEKEY}";
 
 prompt '---------------------------------'
 prompt 'Openning new PDB and saving state'
 prompt '---------------------------------'
-
 ALTER PLUGGABLE DATABASE ${PDBNAME} OPEN;
 ALTER PLUGGABLE DATABASE ${PDBNAME} SAVE STATE;
 ALTER SESSION SET CONTAINER=${PDBNAME} ;
@@ -174,18 +184,17 @@ printSeparator
 if [ ${EXIT_CODE} != 0 ]; then
   printWarning "Couldn't create PDB"
   printWarning "Aborting creation of ${PDBNAME}"
-  ## Send email
-  #sendEmail "${PRINT_ACTION} ABORTED of ${SHOP_NAME}" "${SHOP_INFO}"
-  continue;
+  echo "There were errors during the process,please check ${LOG_FILE}"
 fi
 }
-
+# -----------------------------------
 ## -- REMOVE A PDB
+# -----------------------------------
 remove_pdb ()
 {
 printInfo "Dropping a PDB : ${PDBNAME} "
 printSeparator
-
+echo "Dropping pluggable database ${PDBNAME}............"
 sqlplus -s / as sysdba << EOF 2>&1 >> ${LOG_FILE}
 set serveroutput on;
 set echo on
@@ -227,7 +236,50 @@ printSeparator
 if [ ${EXIT_CODE} != 0 ]; then
   printWarning "Couldn't remove a PDB"
   printWarning "Aborting removal of ${PDBNAME}"
-  ## Send email
-  sendEmail "ABORTED removal of ${PDBNAME}"
+  echo "There were errors during the process,please check ${LOG_FILE}"
+fi
+}
+# -----------------------------------
+## -- REFRESH A PDB
+# -----------------------------------
+refresh_pdb ()
+{
+printInfo "Refreshing a PDB : ${TEMPLATE} "
+printSeparator
+echo "Refreshing pluggable database ${TEMPLATE}............"
+sqlplus -s / as sysdba << EOF 2>&1 >> ${LOG_FILE}
+set serveroutput on;
+set echo on
+set time on
+set timin on
+WHENEVER SQLERROR EXIT 1
+
+prompt "step 1"
+
+DECLARE
+  pdbName VARCHAR2(32);
+  pdbMode VARCHAR2(32);
+BEGIN
+select name,open_mode into pdbName,pdbMode from v\$pdbs where name = '${TEMPLATE}';
+--
+if pdbMode != 'READ WRITE' then 
+  raise_application_error(-20001,'Incompatible mode ' || pdbMode || ' for ' || '${TEMPLATE}' );
+end if;
+EXCEPTION
+WHEN NO_DATA_FOUND THEN
+  dbms_output.put_line('Pluggable database does not exists: '||sqlerrm);
+END;
+/
+
+exit 0
+EOF
+
+EXIT_CODE=${?}
+printSeparator
+
+if [ ${EXIT_CODE} != 0 ]; then
+  printWarning "Couldn't refresh the PDB"
+  printWarning "Aborting refresh of ${TEMPLATE}"
+  echo "There were errors during the process,please check ${LOG_FILE}"
 fi
 }
